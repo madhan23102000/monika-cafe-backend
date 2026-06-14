@@ -21,7 +21,6 @@ passlib==1.7.4
 protobuf==3.20.3
 pyasn1==0.6.3
 pycparser==3.0
-pydantic==2.13.4
 pydantic_core==2.46.4
 PyMySQL==1.2.0
 python-dotenv==1.2.2
@@ -38,6 +37,5 @@ uvicorn==0.47.0
 watchfiles==1.2.0
 websockets==16.0
 reportlab
-fastapi-mail
 pydantic==1.10.13
 fastapi-mail==1.4.1
