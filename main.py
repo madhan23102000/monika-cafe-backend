@@ -2,39 +2,49 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jose import jwt
+from fastapi.responses import FileResponse
 
-from database import (
-    SessionLocal,
-    engine,
-    Base
-)
+from reportlab.pdfgen import canvas
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+
+from database import SessionLocal, engine, Base
 
 from models import (
-    User,
-    Menu,
-    Order,
-    Bill,
-    Inventory
+User,
+Menu,
+Order,
+Bill,
+Inventory,
+Customer,
+Reservation,
+Feedback,
+Employee
 )
 
 from schemas import (
-    UserCreate,
-    UserLogin,
-    MenuCreate,
-    MenuUpdate,
-    OrderCreate,
-    OrderStatusUpdate,
-    BillCreate,
-    InventoryCreate,
-    InventoryUpdate
+UserCreate,
+UserLogin,
+MenuCreate,
+MenuUpdate,
+OrderCreate,
+OrderUpdate,
+BillCreate,
+InventoryCreate,
+CustomerCreate,
+CustomerUpdate,
+ReservationCreate,
+ReservationUpdate,
+FeedbackCreate,
+FeedbackUpdate,
+EmployeeCreate,
+EmployeeUpdate,
+EmailSchema
 )
 
-# Create Tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Security
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto"
@@ -44,7 +54,10 @@ SECRET_KEY = "monika_cafe_secret_key"
 ALGORITHM = "HS256"
 
 
-# Database
+# ======================
+# DATABASE
+# ======================
+
 def get_db():
     db = SessionLocal()
 
@@ -55,42 +68,26 @@ def get_db():
         db.close()
 
 
+# ======================
 # HOME
+# ======================
+
 @app.get("/")
 def home():
-
     return {
-        "message": "Monika Cafe Backend"
+        "message": "Monika Cafe Backend Running"
     }
 
 
-# TEST
-@app.get("/test")
-def test():
-
-    return {
-        "status": "working"
-    }
-
-
+# ======================
 # REGISTER
+# ======================
+
 @app.post("/register")
 def register(
     user: UserCreate,
     db: Session = Depends(get_db)
 ):
-
-    existing = db.query(
-        User
-    ).filter(
-        User.email == user.email
-    ).first()
-
-    if existing:
-
-        return {
-            "message": "Email Exists"
-        }
 
     hashed = pwd_context.hash(
         user.password
@@ -104,220 +101,127 @@ def register(
     )
 
     db.add(new_user)
-
     db.commit()
 
-    db.refresh(new_user)
-
     return {
-        "message": "Registered",
-        "id": new_user.id
+        "message": "Registered"
     }
 
 
+# ======================
 # LOGIN
+# ======================
+
 @app.post("/login")
 def login(
     user: UserLogin,
     db: Session = Depends(get_db)
 ):
 
-    db_user = db.query(
-        User
-    ).filter(
+    db_user = db.query(User).filter(
         User.email == user.email
     ).first()
 
     if not db_user:
-
         return {
-            "message": "User Not Found"
+            "message": "User not found"
         }
 
     if not pwd_context.verify(
         user.password,
         db_user.password
     ):
-
         return {
-            "message": "Wrong Password"
+            "message": "Invalid Password"
         }
 
     token = jwt.encode(
         {
-            "sub": db_user.email
+            "email": db_user.email,
+            "role": db_user.role
         },
-
         SECRET_KEY,
-
         algorithm=ALGORITHM
     )
 
     return {
-        "access_token": token
+        "token": token
     }
 
 
-# MENU ADD
+# ======================
+# MENU
+# ======================
+
 @app.post("/menu")
 def add_menu(
     menu: MenuCreate,
     db: Session = Depends(get_db)
 ):
 
-    item = Menu(**menu.dict())
+    item = Menu(**menu.model_dump())
 
     db.add(item)
 
     db.commit()
-
-    db.refresh(item)
 
     return {
         "message": "Menu Added"
     }
 
 
-# VIEW MENU
 @app.get("/menu")
 def view_menu(
     db: Session = Depends(get_db)
 ):
 
-    return db.query(
-        Menu
-    ).all()
+    return db.query(Menu).all()
 
 
-# UPDATE MENU
-@app.put("/menu/{menu_id}")
-def update_menu(
-    menu_id: int,
-    menu: MenuUpdate,
-    db: Session = Depends(get_db)
-):
+# ======================
+# ORDER
+# ======================
 
-    item = db.query(
-        Menu
-    ).filter(
-        Menu.id == menu_id
-    ).first()
-
-    if not item:
-
-        return {
-            "message": "Not Found"
-        }
-
-    item.name = menu.name
-    item.category = menu.category
-    item.price = menu.price
-    item.availability = menu.availability
-
-    db.commit()
-
-    return {
-        "message": "Updated"
-    }
-
-
-# DELETE MENU
-@app.delete("/menu/{menu_id}")
-def delete_menu(
-    menu_id: int,
-    db: Session = Depends(get_db)
-):
-
-    item = db.query(
-        Menu
-    ).filter(
-        Menu.id == menu_id
-    ).first()
-
-    if item:
-
-        db.delete(item)
-
-        db.commit()
-
-    return {
-        "message": "Deleted"
-    }
-
-
-# PLACE ORDER
 @app.post("/order")
-def place_order(
+def create_order(
     order: OrderCreate,
     db: Session = Depends(get_db)
 ):
 
-    menu = db.query(
-        Menu
-    ).filter(
-        Menu.id == order.menu_id
-    ).first()
+    new_order = Order(**order.model_dump())
 
-    if not menu:
-
-        return {
-            "message": "Menu Not Found"
-        }
-
-    total = (
-        menu.price *
-        order.quantity
-    )
-
-    obj = Order(
-        customer_name=order.customer_name,
-        menu_id=order.menu_id,
-        quantity=order.quantity,
-        total_price=total,
-        status="Pending"
-    )
-
-    db.add(obj)
+    db.add(new_order)
 
     db.commit()
 
+    db.refresh(new_order)
+
     return {
-        "message": "Order Success"
+        "message": "Order Created",
+        "order_id": new_order.id
     }
 
 
-# VIEW ORDER
-@app.get("/orders")
-def orders(
+@app.get("/order")
+def view_orders(
     db: Session = Depends(get_db)
 ):
 
-    return db.query(
-        Order
-    ).all()
+    return db.query(Order).all()
 
 
-# UPDATE ORDER
-@app.put("/orders/{order_id}")
+@app.put("/order/{order_id}")
 def update_order(
     order_id: int,
-    data: OrderStatusUpdate,
+    order: OrderUpdate,
     db: Session = Depends(get_db)
 ):
 
-    obj = db.query(
-        Order
-    ).filter(
+    item = db.query(Order).filter(
         Order.id == order_id
     ).first()
 
-    if not obj:
-
-        return {
-            "message": "Not Found"
-        }
-
-    obj.status = data.status
+    item.status = order.status
 
     db.commit()
 
@@ -326,62 +230,84 @@ def update_order(
     }
 
 
+# ======================
 # BILL
+# ======================
+
+# ======================
+# BILL
+# ======================
+
 @app.post("/bill")
-def bill(
-    data: BillCreate,
+def create_bill(
+    bill: BillCreate,
     db: Session = Depends(get_db)
 ):
 
-    order = db.query(
-        Order
-    ).filter(
-        Order.id == data.order_id
-    ).first()
+    gst = bill.subtotal * 0.05
 
-    subtotal = order.total_price
+    total = bill.subtotal + gst
 
-    gst = subtotal * 0.05
-
-    total = subtotal + gst
-
-    obj = Bill(
-        order_id=data.order_id,
-        subtotal=subtotal,
+    data = Bill(
+        order_id=bill.order_id,
+        subtotal=bill.subtotal,
         gst=gst,
         total=total,
-        payment_method=data.payment_method
+        payment_method=bill.payment_method
     )
 
-    db.add(obj)
+    db.add(data)
+
+    # -------------------
+    # LOYALTY POINTS
+    # ₹100 = 10 points
+    # -------------------
+
+    customer = db.query(
+        Customer
+    ).first()
+
+    if customer:
+
+        points = (
+            int(
+                bill.subtotal / 100
+            ) * 10
+        )
+
+        customer.loyalty_points += points
 
     db.commit()
 
+    db.refresh(data)
+
     return {
-        "total": total
+        "message": "Bill Created",
+        "bill_id": data.id,
+        "subtotal": bill.subtotal,
+        "gst": gst,
+        "total": total,
+        "loyalty_added": (
+            int(
+                bill.subtotal / 100
+            ) * 10
+        )
     }
-
-
-@app.get("/bill")
-def view_bill(
-    db: Session = Depends(get_db)
-):
-
-    return db.query(
-        Bill
-    ).all()
-
-
+# ======================
 # INVENTORY
+# ======================
+
 @app.post("/inventory")
 def add_inventory(
-    data: InventoryCreate,
+    inventory: InventoryCreate,
     db: Session = Depends(get_db)
 ):
 
-    obj = Inventory(**data.dict())
+    item = Inventory(
+        **inventory.model_dump()
+    )
 
-    db.add(obj)
+    db.add(item)
 
     db.commit()
 
@@ -391,10 +317,523 @@ def add_inventory(
 
 
 @app.get("/inventory")
-def inventory(
+def view_inventory(
     db: Session = Depends(get_db)
 ):
 
     return db.query(
         Inventory
     ).all()
+
+
+# ======================
+# CUSTOMER
+# ======================
+
+@app.post("/customer")
+def create_customer(
+    customer: CustomerCreate,
+    db: Session = Depends(get_db)
+):
+
+    data = Customer(
+        **customer.model_dump()
+    )
+
+    db.add(data)
+
+    db.commit()
+
+    return {
+        "message": "Customer Added"
+    }
+
+
+@app.get("/customer")
+def view_customer(
+    db: Session = Depends(get_db)
+):
+
+    return db.query(
+        Customer
+    ).all()
+
+
+@app.get("/customer/{customer_id}")
+def get_customer(
+    customer_id: int,
+    db: Session = Depends(get_db)
+):
+
+    return db.query(
+        Customer
+    ).filter(
+        Customer.id == customer_id
+    ).first()
+
+
+@app.put("/customer/{customer_id}")
+def update_customer(
+    customer_id: int,
+    customer: CustomerUpdate,
+    db: Session = Depends(get_db)
+):
+
+    data = db.query(
+        Customer
+    ).filter(
+        Customer.id == customer_id
+    ).first()
+
+    data.name = customer.name
+    data.phone = customer.phone
+    data.address = customer.address
+    data.loyalty_points = customer.loyalty_points
+
+    db.commit()
+
+    return {
+        "message": "Customer Updated"
+    }
+
+# ======================
+# REPORTS
+# ======================
+
+@app.get("/reports/sales")
+def sales_report(
+    db: Session = Depends(get_db)
+):
+
+    total_orders = db.query(
+        Order
+    ).count()
+
+    total_customers = db.query(
+        Customer
+    ).count()
+
+    total_bills = db.query(
+        Bill
+    ).count()
+
+    return {
+        "total_orders": total_orders,
+        "total_customers": total_customers,
+        "total_bills": total_bills
+    }
+
+
+@app.get("/reports/revenue")
+def revenue_report(
+    db: Session = Depends(get_db)
+):
+
+    bills = db.query(
+        Bill
+    ).all()
+
+    revenue = sum(
+        bill.total
+        for bill in bills
+    )
+
+    return {
+        "total_revenue": revenue
+    }
+
+
+@app.get("/reports/orders")
+def order_report(
+    db: Session = Depends(get_db)
+):
+
+    return db.query(
+        Order
+    ).all()
+
+
+@app.get("/reports/customers")
+def customer_report(
+    db: Session = Depends(get_db)
+):
+
+    return db.query(
+        Customer
+    ).all()
+
+# ======================
+# RESERVATION
+# ======================
+
+@app.post("/reservation")
+def create_reservation(
+    reservation: ReservationCreate,
+    db: Session = Depends(get_db)
+):
+
+    data = Reservation(
+        **reservation.model_dump()
+    )
+
+    db.add(data)
+
+    db.commit()
+
+    db.refresh(data)
+
+    return {
+        "message": "Reservation Created",
+        "reservation_id": data.id
+    }
+
+
+@app.get("/reservation")
+def view_reservation(
+    db: Session = Depends(get_db)
+):
+
+    return db.query(
+        Reservation
+    ).all()
+
+
+@app.put("/reservation/{reservation_id}")
+def update_reservation(
+    reservation_id: int,
+    reservation: ReservationUpdate,
+    db: Session = Depends(get_db)
+):
+
+    data = db.query(
+        Reservation
+    ).filter(
+        Reservation.id == reservation_id
+    ).first()
+
+    if not data:
+
+        return {
+            "message": "Reservation Not Found"
+        }
+
+    data.status = reservation.status
+
+    db.commit()
+
+    return {
+        "message": "Reservation Updated"
+    }
+
+
+@app.delete("/reservation/{reservation_id}")
+def delete_reservation(
+    reservation_id: int,
+    db: Session = Depends(get_db)
+):
+
+    data = db.query(
+        Reservation
+    ).filter(
+        Reservation.id == reservation_id
+    ).first()
+
+    if not data:
+
+        return {
+            "message": "Reservation Not Found"
+        }
+
+    db.delete(data)
+
+    db.commit()
+
+    return {
+        "message": "Reservation Deleted"
+    }
+
+# ======================
+# FEEDBACK
+# ======================
+
+@app.post("/feedback")
+def create_feedback(
+    feedback: FeedbackCreate,
+    db: Session = Depends(get_db)
+):
+
+    data = Feedback(
+        **feedback.model_dump()
+    )
+
+    db.add(data)
+
+    db.commit()
+
+    db.refresh(data)
+
+    return {
+        "message": "Feedback Added",
+        "feedback_id": data.id
+    }
+
+
+@app.get("/feedback")
+def view_feedback(
+    db: Session = Depends(get_db)
+):
+
+    return db.query(
+        Feedback
+    ).all()
+
+
+@app.put("/feedback/{feedback_id}")
+def update_feedback(
+    feedback_id: int,
+    feedback: FeedbackUpdate,
+    db: Session = Depends(get_db)
+):
+
+    data = db.query(
+        Feedback
+    ).filter(
+        Feedback.id == feedback_id
+    ).first()
+
+    if not data:
+
+        return {
+            "message": "Feedback Not Found"
+        }
+
+    data.status = feedback.status
+
+    db.commit()
+
+    return {
+        "message": "Feedback Updated"
+    }
+
+
+@app.delete("/feedback/{feedback_id}")
+def delete_feedback(
+    feedback_id: int,
+    db: Session = Depends(get_db)
+):
+
+    data = db.query(
+        Feedback
+    ).filter(
+        Feedback.id == feedback_id
+    ).first()
+
+    if not data:
+
+        return {
+            "message": "Feedback Not Found"
+        }
+
+    db.delete(data)
+
+    db.commit()
+
+    return {
+        "message": "Feedback Deleted"
+    }
+
+# ======================
+# EMPLOYEE
+# ======================
+
+@app.post("/employee")
+def create_employee(
+    employee: EmployeeCreate,
+    db: Session = Depends(get_db)
+):
+
+    data = Employee(
+        **employee.model_dump()
+    )
+
+    db.add(data)
+
+    db.commit()
+
+    db.refresh(data)
+
+    return {
+        "message": "Employee Added",
+        "employee_id": data.id
+    }
+
+
+@app.get("/employee")
+def view_employee(
+    db: Session = Depends(get_db)
+):
+
+    return db.query(
+        Employee
+    ).all()
+
+
+@app.put("/employee/{employee_id}")
+def update_employee(
+    employee_id: int,
+    employee: EmployeeUpdate,
+    db: Session = Depends(get_db)
+):
+
+    data = db.query(
+        Employee
+    ).filter(
+        Employee.id == employee_id
+    ).first()
+
+    if not data:
+        return {
+            "message": "Employee Not Found"
+        }
+
+    data.attendance = employee.attendance
+
+    db.commit()
+
+    return {
+        "message": "Employee Updated"
+    }
+
+
+@app.delete("/employee/{employee_id}")
+def delete_employee(
+    employee_id: int,
+    db: Session = Depends(get_db)
+):
+
+    data = db.query(
+        Employee
+    ).filter(
+        Employee.id == employee_id
+    ).first()
+
+    if not data:
+        return {
+            "message": "Employee Not Found"
+        }
+
+    db.delete(data)
+
+    db.commit()
+
+    return {
+        "message": "Employee Deleted"
+    }
+
+# ======================
+# INVOICE PDF
+# ======================
+
+@app.get("/invoice/{bill_id}")
+def download_invoice(
+    bill_id: int,
+    db: Session = Depends(get_db)
+):
+
+    bill = db.query(
+        Bill
+    ).filter(
+        Bill.id == bill_id
+    ).first()
+
+    if not bill:
+
+        return {
+            "message": "Bill Not Found"
+        }
+
+    filename = f"invoice_{bill_id}.pdf"
+
+    pdf = canvas.Canvas(
+        filename
+    )
+
+    pdf.drawString(
+        100,
+        800,
+        "MONIKA CAFE INVOICE"
+    )
+
+    pdf.drawString(
+        100,
+        760,
+        f"Bill ID: {bill.id}"
+    )
+
+    pdf.drawString(
+        100,
+        730,
+        f"Order ID: {bill.order_id}"
+    )
+
+    pdf.drawString(
+        100,
+        700,
+        f"Subtotal: {bill.subtotal}"
+    )
+
+    pdf.drawString(
+        100,
+        670,
+        f"GST: {bill.gst}"
+    )
+
+    pdf.drawString(
+        100,
+        640,
+        f"Total: {bill.total}"
+    )
+
+    pdf.drawString(
+        100,
+        610,
+        f"Payment: {bill.payment_method}"
+    )
+
+    pdf.save()
+
+    return FileResponse(
+        filename,
+        media_type="application/pdf",
+        filename=filename
+    )
+
+conf = ConnectionConfig(
+    MAIL_USERNAME="yourmail@gmail.com",
+    MAIL_PASSWORD="app_password",
+    MAIL_FROM="yourmail@gmail.com",
+    MAIL_PORT=587,
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    USE_CREDENTIALS=True
+)
+
+
+@app.post("/send-email")
+async def send_email(data: EmailSchema):
+
+    message = MessageSchema(
+        subject=data.subject,
+        recipients=[data.email],
+        body=data.message,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+
+    await fm.send_message(message)
+
+    return {
+        "message": "Email Sent"
+    }

@@ -2,14 +2,16 @@ from sqlalchemy import (
     Column,
     Integer,
     String,
-    Float,
-    ForeignKey
+    Float
 )
 
 from database import Base
 
 
-# User Table
+# ======================
+# USER TABLE
+# ======================
+
 class User(Base):
     __tablename__ = "users"
 
@@ -19,9 +21,7 @@ class User(Base):
         index=True
     )
 
-    name = Column(
-        String(100)
-    )
+    name = Column(String(100))
 
     email = Column(
         String(100),
@@ -33,11 +33,15 @@ class User(Base):
     )
 
     role = Column(
-        String(50)
+        String(50),
+        default="customer"
     )
 
 
-# Menu Table
+# ======================
+# MENU TABLE
+# ======================
+
 class Menu(Base):
     __tablename__ = "menu"
 
@@ -47,24 +51,21 @@ class Menu(Base):
         index=True
     )
 
-    name = Column(
-        String(100)
-    )
+    name = Column(String(100))
 
-    category = Column(
-        String(100)
-    )
+    category = Column(String(100))
 
-    price = Column(
-        Float
-    )
+    price = Column(Float)
 
     availability = Column(
         String(50)
     )
 
 
-# Order Table
+# ======================
+# ORDER TABLE
+# ======================
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -78,17 +79,12 @@ class Order(Base):
         String(100)
     )
 
-    menu_id = Column(
-        Integer,
-        ForeignKey("menu.id")
+    item = Column(
+        String(100)
     )
 
     quantity = Column(
         Integer
-    )
-
-    total_price = Column(
-        Float
     )
 
     status = Column(
@@ -97,8 +93,10 @@ class Order(Base):
     )
 
 
+# ======================
+# BILL TABLE
+# ======================
 
-# Bill Table
 class Bill(Base):
     __tablename__ = "bills"
 
@@ -109,8 +107,7 @@ class Bill(Base):
     )
 
     order_id = Column(
-        Integer,
-        ForeignKey("orders.id")
+        Integer
     )
 
     subtotal = Column(
@@ -129,10 +126,15 @@ class Bill(Base):
         String(50)
     )
 
-    payment_status = Column(
+    status = Column(
         String(50),
         default="Paid"
     )
+
+
+# ======================
+# INVENTORY TABLE
+# ======================
 
 class Inventory(Base):
     __tablename__ = "inventory"
@@ -155,6 +157,127 @@ class Inventory(Base):
         String(100)
     )
 
-    status = Column(
+
+# ======================
+# CUSTOMER TABLE
+# ======================
+
+class Customer(Base):
+    __tablename__ = "customers"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    name = Column(
+        String(100)
+    )
+
+    phone = Column(
+        String(20)
+    )
+
+    address = Column(
+        String(255)
+    )
+
+    loyalty_points = Column(
+        Integer,
+        default=0
+    )
+
+# ======================
+# RESERVATION TABLE
+# ======================
+
+class Reservation(Base):
+    __tablename__ = "reservations"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    customer_name = Column(
+        String(100)
+    )
+
+    table_number = Column(
+        Integer
+    )
+
+    date = Column(
         String(50)
+    )
+
+    time = Column(
+        String(50)
+    )
+
+    status = Column(
+        String(50),
+        default="Booked"
+    )
+
+# ======================
+# FEEDBACK TABLE
+# ======================
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    customer_name = Column(
+        String(100)
+    )
+
+    rating = Column(
+        Integer
+    )
+
+    review = Column(
+        String(500)
+    )
+
+    status = Column(
+        String(50),
+        default="Open"
+    )
+
+# ======================
+# EMPLOYEE TABLE
+# ======================
+
+class Employee(Base):
+    __tablename__ = "employees"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    name = Column(
+        String(100)
+    )
+
+    role = Column(
+        String(100)
+    )
+
+    salary = Column(
+        Float
+    )
+
+    attendance = Column(
+        String(50),
+        default="Present"
     )
