@@ -5,7 +5,7 @@ from jose import jwt
 from fastapi.responses import FileResponse
 
 from reportlab.pdfgen import canvas
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+
 
 from database import SessionLocal, engine, Base
 
@@ -38,7 +38,6 @@ FeedbackCreate,
 FeedbackUpdate,
 EmployeeCreate,
 EmployeeUpdate,
-EmailSchema
 )
 
 Base.metadata.create_all(bind=engine)
@@ -808,32 +807,4 @@ def download_invoice(
         filename=filename
     )
 
-conf = ConnectionConfig(
-    MAIL_USERNAME="yourmail@gmail.com",
-    MAIL_PASSWORD="app_password",
-    MAIL_FROM="yourmail@gmail.com",
-    MAIL_PORT=587,
-    MAIL_SERVER="smtp.gmail.com",
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
-    USE_CREDENTIALS=True
-)
 
-
-@app.post("/send-email")
-async def send_email(data: EmailSchema):
-
-    message = MessageSchema(
-        subject=data.subject,
-        recipients=[data.email],
-        body=data.message,
-        subtype="plain"
-    )
-
-    fm = FastMail(conf)
-
-    await fm.send_message(message)
-
-    return {
-        "message": "Email Sent"
-    }
