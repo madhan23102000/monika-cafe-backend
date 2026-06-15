@@ -11,18 +11,7 @@ from fastapi.responses import FileResponse
 from reportlab.pdfgen import canvas
 
 from database import SessionLocal, engine, Base
-from fastapi import HTTPException
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
-from passlib.context import CryptContext
-from jose import jwt
-from fastapi.responses import FileResponse
 
-from reportlab.pdfgen import canvas
-
-
-from database import SessionLocal, engine, Base
 
 from models import (
 User,
