@@ -832,16 +832,24 @@ conf = ConnectionConfig(
 async def send_email():
 
     try:
+        message = MessageSchema(
+            subject="Monika Cafe",
+            recipients=["havocmadhan200@gmail.com"],
+            body="Testing SMTP",
+            subtype="plain"
+        )
+
         fm = FastMail(conf)
 
-        await fm.check_connection()
+        await fm.send_message(message)
 
         return {
-            "message": "SMTP Connected"
+            "message": "Email Sent Successfully"
         }
 
     except Exception as e:
 
         return {
+            "error_type": str(type(e)),
             "error": str(e)
         }
