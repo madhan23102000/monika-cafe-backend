@@ -1,3 +1,4 @@
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -807,4 +808,37 @@ def download_invoice(
         filename=filename
     )
 
+# ======================
+# EMAIL
+# ======================
+
+conf = ConnectionConfig(
+    MAIL_USERNAME="havocmadhan200@gmail.com",
+    MAIL_PASSWORD="dyqjnafyjzifnzje",
+    MAIL_FROM="havocmadhan200@gmail.com",
+    MAIL_PORT=587,
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    USE_CREDENTIALS=True
+)
+
+
+@app.post("/send-email")
+async def send_email():
+
+    message = MessageSchema(
+        subject="Monika Cafe",
+        recipients=["havocmadhan200@gmail.com"],
+        body="Email working from Monika Cafe ☕",
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+
+    await fm.send_message(message)
+
+    return {
+        "message": "Email Sent Successfully"
+    }
 
