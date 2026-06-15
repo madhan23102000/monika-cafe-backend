@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
@@ -828,21 +829,28 @@ conf = ConnectionConfig(
 )
 
 
+
 @app.post("/send-email")
 async def send_email():
 
-    message = MessageSchema(
-        subject="Monika Cafe",
-        recipients=["havocmadhan200@gmail.com"],
-        body="Email working from Monika Cafe ☕",
-        subtype="plain"
-    )
+    try:
+        message = MessageSchema(
+            subject="Monika Cafe",
+            recipients=["havocmadhan200@gmail.com"],
+            body="Email working from Monika Cafe ☕",
+            subtype="plain"
+        )
 
-    fm = FastMail(conf)
+        fm = FastMail(conf)
 
-    await fm.send_message(message)
+        await fm.send_message(message)
 
-    return {
-        "message": "Email Sent Successfully"
-    }
+        return {
+            "message": "Email Sent Successfully"
+        }
 
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
