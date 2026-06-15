@@ -814,9 +814,9 @@ def download_invoice(
 # ======================
 
 conf = ConnectionConfig(
-    MAIL_USERNAME="havocmadhan200@gmail.com",
-    MAIL_PASSWORD="dyqjnafyjzifnzje",
-    MAIL_FROM="havocmadhan200@gmail.com",
+    MAIL_USERNAME=os.getenv("havocmadhan200@gmail.com"),
+    MAIL_PASSWORD=os.getenv("ggaghtubupgkuwom"),
+    MAIL_FROM=os.getenv("havocmadhan200@gmail.com"),
 
     MAIL_SERVER="smtp.gmail.com",
     MAIL_PORT=587,
@@ -824,7 +824,8 @@ conf = ConnectionConfig(
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False,
 
-    USE_CREDENTIALS=True
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True
 )
 
 
