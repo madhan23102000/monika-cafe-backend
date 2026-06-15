@@ -829,7 +829,6 @@ conf = ConnectionConfig(
 )
 
 
-
 @app.post("/send-email")
 async def send_email():
 
@@ -845,12 +844,7 @@ async def send_email():
 
         await fm.send_message(message)
 
-        return {
-            "message": "Email Sent Successfully"
-        }
+        return {"message":"Email Sent Successfully"}
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+        return {"error": str(e)}
