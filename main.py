@@ -824,8 +824,7 @@ conf = ConnectionConfig(
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False,
 
-    USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True
+    USE_CREDENTIALS=True
 )
 
 
@@ -833,18 +832,16 @@ conf = ConnectionConfig(
 async def send_email():
 
     try:
-        message = MessageSchema(
-            subject="Monika Cafe",
-            recipients=["havocmadhan200@gmail.com"],
-            body="Email working from Monika Cafe ☕",
-            subtype="plain"
-        )
-
         fm = FastMail(conf)
 
-        await fm.send_message(message)
+        await fm.check_connection()
 
-        return {"message":"Email Sent Successfully"}
+        return {
+            "message": "SMTP Connected"
+        }
 
     except Exception as e:
-        return {"error": str(e)}
+
+        return {
+            "error": str(e)
+        }
